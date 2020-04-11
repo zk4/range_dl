@@ -27,10 +27,10 @@ coverage:
 	pytest --cov=range_dl/ tests/
 
 install: uninstall
-	pip3 install  .
+	sudo pip3 install  .
 
 uninstall:
-	pip3 uninstall -y range_dl
+	sudo pip3 uninstall -y range_dl
 
 debug:
 	python3 -m range_dl "https://doubanzyv1.tyswmp.com/2018/07/26/0vhyINWfXeWIkrJd/playlist.m3u8" -d -k -w -o "./a.mp4" 

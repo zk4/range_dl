@@ -57,17 +57,16 @@ class range_dl(object):
         self.is_http_url    = url.startswith("http")
         self.out_path       = out_path
         self.session        = self._get_http_session(pool_size, pool_size, 5)
-        # self.ts_list        = [urljoin(self.url, n.strip()) for n in self.m3u8_content.split('\n') if n and not n.startswith("#")]
         self.debug          = debug
 
 
         self.cotent_size         = self.get_content_size()
         logger.debug(f'self.cotent_size:{self.cotent_size}')
         self.range_count          = 400 if  self.cotent_size > 10000 else  4    
+        self.ranges         =[]
         self.len_sub        = self.cotent_size // self.range_count 
         self.diff           = self.cotent_size % self.range_count
 
-        # self.ts_list_pair   = zip(self.ts_list, [n for n in range(len(self.ts_list))])
         self.next_merged_id = 0
         self.ready_to_merged= set()
         self.downloadQ      = queue.PriorityQueue()
@@ -139,6 +138,7 @@ class range_dl(object):
             if _max > self.cotent_size: 
                 _max = self.cotent_size -1 
 
+            self.ranges.append((_min,_max))
             self.downloadQ.put((i,_min,_max))
             _min = _max + 1
 
@@ -171,8 +171,11 @@ class range_dl(object):
                         outfile.write(o)
                         outfile.flush()
                     else:
-                        sys.stdout.buffer.write(o)
-                        sys.stdout.flush()
+                        try:
+                            sys.stdout.buffer.write(o)
+                            sys.stdout.flush()
+                        except Exception as e:
+                            sys.exit(-1)
 
                     infile.close()
 
@@ -191,10 +194,9 @@ class range_dl(object):
                     logger.error(f'{oldidx} merge error ,reput to thread')
                     logger.exception(e)
 
-                    _min = self.len_sub * oldidx       
-                    _max = self.len_sub * (oldidx + 1)
-                    if oldidx == self.range_count-1: 
-                        _max += self.diff
+                    _min = self.ranges[oldidx][0]       
+                    _max = self.ranges[oldidx][1]
+
                     self.downloadQ.put((oldidx,_min,_max))
                 except Exception as e2:
                     logger.exception(e)
@@ -236,7 +238,7 @@ def createParse():
     parser.add_argument("url",  help="url")
     parser.add_argument('-o', '--out_path',type=str,  help="output path, ex: ./a.mp4" )
     parser.add_argument('-p', '--proxy',type=str,  help="for example: socks5h://127.0.0.1:5992")
-    parser.add_argument('-t', '--threadcount',type=int,  help="thread count" ,default=20)
+    parser.add_argument('-t', '--threadcount',type=int,  help="thread count" ,default=5)
     parser.add_argument('-d', '--debug', help='debug info', default=False, action='store_true') 
     parser.add_argument('-w', '--overwrite', help='overwrite existed file', action='store_true')  
     mydir = os.path.dirname(os.path.abspath(__file__))
