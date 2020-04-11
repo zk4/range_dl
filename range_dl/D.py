@@ -72,7 +72,7 @@ class D():
                         if data:
                             wrote = wrote + len(data)
                             f.write(data)
-                            p.update(name.rjust(13,' '), wrote, webSize,str(int(wrote/(int(time.time()-start)+1)/1024)) +"kb/s",userDefineVisual)
+                            # p.update(name.rjust(13,' '), wrote, webSize,str(int(wrote/(int(time.time()-start)+1)/1024)) +"kb/s",userDefineVisual)
                     # print("data-------->",_min,_max,data.decode("utf-8"))
                     if wrote != webSize :
                         # logger.debug(f"ERROR, something went wrong wroteSize{wrote} != webSize{webSize}")

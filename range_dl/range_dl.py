@@ -152,8 +152,9 @@ class range_dl(object):
         while self.next_merged_id < self.range_count:
             dots = random.randint(0,3)*"."
             
-            pp.update("total merged ", self.next_merged_id, self.range_count,"",userDefineVisual2)
-            pp.update("block pending", self.next_merged_id+len(self.ready_to_merged), self.range_count,"",userDefineVisual2)
+            if   self.out_path:
+                pp.update("total merged ", self.next_merged_id, self.range_count,"",userDefineVisual2)
+                pp.update("block pending", self.next_merged_id+len(self.ready_to_merged), self.range_count,"",userDefineVisual2)
             oldidx = self.next_merged_id
             try:
 
