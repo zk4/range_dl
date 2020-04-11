@@ -38,14 +38,15 @@ class D():
             
 
             if os.path.exists(destFile):
-                print("++++++++++++++++++++++++++++++")
+                # print("++++++++++++++++++++++++++++++")
                 return True
 
-            webSize = self.getWebFileSize(url)
-            if webSize == 0:
-                print("------------------------------")
-                print("something went wrong, webSize is 0")
-                return False
+#             webSize = self.getWebFileSize(url)
+#             if webSize == 0:
+#                 print("------------------------------")
+#                 print("something went wrong, webSize is 0")
+#                 return False
+            webSize = _max - _min +1
 
             localSize = 0
             # os.remove(destFile)
@@ -71,9 +72,10 @@ class D():
                             wrote = wrote + len(data)
                             f.write(data)
                             p.update(name.rjust(13,' '), wrote, webSize,str(int(wrote/(int(time.time()-start)+1)/1024)) +"kb/s",userDefineVisual)
-                    # if wrote != webSize:
-                    #     logger.debug(f"ERROR, something went wrong wroteSize{wrote} != webSize{webSize}")
-                    #     return False
+                    if wrote != webSize:
+                        # logger.debug(f"ERROR, something went wrong wroteSize{wrote} != webSize{webSize}")
+                        # print("size erorrrrrrrrrrrrrrrrrrrrrrrr",wrote,webSize)
+                        return False
 
                 os.rename(destFile+".tmp",destFile)
                 return True
@@ -82,8 +84,8 @@ class D():
             raise Exception("status_code is not 200.") 
 
         except Exception as e:
-            print(e)
-            traceback.print_stack()
+            # print("errrrrrrrrrrrrrrrrrrrrrrr",e)
+            # traceback.print_stack()
             return False
 
     def getWebFileSize(self, url):

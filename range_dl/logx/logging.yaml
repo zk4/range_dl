@@ -30,8 +30,4 @@ loggers:
         level: INFO
         handlers: [colored,console]
         propagate: no
-    range_dl.D:
-        level: DEBUG
-        handlers: [colored,console]
-        propagate: no
 

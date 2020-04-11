@@ -63,8 +63,8 @@ class range_dl(object):
 
         self.length         = self.get_content_size()
         logger.debug(f'self.length:{self.length}')
-        self.limit          = 10        
-        self.len_sub        = self.length / self.limit 
+        self.limit          = 300        
+        self.len_sub        = self.length // self.limit 
         self.diff           = self.length % self.limit
 
         # self.ts_list_pair   = zip(self.ts_list, [n for n in range(len(self.ts_list))])
@@ -116,7 +116,7 @@ class range_dl(object):
 
 
     def target(self):
-        while self.next_merged_id < self.length:
+        while self.next_merged_id < self.limit:
             try:
                 idx,_min,_max = self.downloadQ.get(timeout=30)
                 self.download(self.url,idx,_min,_max)
@@ -146,12 +146,11 @@ class range_dl(object):
             pp=pb2.getSingleton()
             if self.out_path:
                 outfile = open(self.out_path, 'ab')
-            while self.next_merged_id < self.length:
+            while self.next_merged_id < self.limit:
                 dots = random.randint(0,3)*"."
                 
-                # p.print(f'\r{self.next_merged_id}/{self.length} merged '+dots+(3-len(dots))*" ",file=sys.stderr,end="")
-                pp.update("total merged ", self.next_merged_id, self.length,"",userDefineVisual2)
-                pp.update("block pending", self.next_merged_id+len(self.ready_to_merged), self.length,"",userDefineVisual2)
+                pp.update("total merged ", self.next_merged_id, self.limit,"",userDefineVisual2)
+                pp.update("block pending", self.next_merged_id+len(self.ready_to_merged), self.limit,"",userDefineVisual2)
                 oldidx = self.next_merged_id
                 try:
                     if self.next_merged_id in self.ready_to_merged:
@@ -185,8 +184,12 @@ class range_dl(object):
                         os.remove(join(self.tempdir,self.tempname,str(oldidx)))
                         logger.error(f'{oldidx} merge error ,reput to thread')
                         logger.exception(e)
-                        # print(self.ts_list[oldidx],oldidx)
-                        # self.downloadQ.put((oldidx,self.ts_list[oldidx]))
+
+                        _min = self.len_sub * oldidx       
+                        _max = self.len_sub * (oldidx + 1)
+                        if oldidx == self.limit-1: 
+                            _max += self.diff
+                        self.downloadQ.put((oldidx,_min,_max))
                     except Exception as e2:
                         logger.exception(e)
 
@@ -227,7 +230,7 @@ def createParse():
     parser.add_argument("url",  help="url")
     parser.add_argument('-o', '--out_path',type=str,  help="output path, ex: ./a.mp4" )
     parser.add_argument('-p', '--proxy',type=str,  help="for example: socks5h://127.0.0.1:5992")
-    parser.add_argument('-t', '--threadcount',type=int,  help="thread count" ,default=10)
+    parser.add_argument('-t', '--threadcount',type=int,  help="thread count" ,default=2)
     parser.add_argument('-d', '--debug', help='debug info', default=False, action='store_true') 
     parser.add_argument('-w', '--overwrite', help='overwrite existed file', action='store_true')  
     mydir = os.path.dirname(os.path.abspath(__file__))
