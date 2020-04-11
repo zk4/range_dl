@@ -64,11 +64,12 @@ class range_dl(object):
         logger.debug(f'self.cotent_size:{self.cotent_size}')
         # self.range_count          = 400 if  self.cotent_size > 10000 else  4    
         self.ranges         =[]
+        self.datas          ={}
 
         self.next_merged_id = 0
         self.ready_to_merged= set()
         self.downloadQ      = queue.PriorityQueue()
-        self.tempdir        = tempfile.gettempdir()
+        # self.tempdir        = tempfile.gettempdir()
         self.tempname       = str(uuid.uuid4())
         self._lock = threading.RLock()
 
@@ -103,10 +104,11 @@ class range_dl(object):
         try:
             d = D(proxies=self.proxies,headers=dict(headers),verify=self.verify,debug=self.debug)
             # logger.debug(f'url:{url}')
-            pathname = join(self.tempdir,self.tempname,str(i))
-            ret = d.download(url,pathname,_min,_max)
-            if ret:
+            # pathname = join(self.tempdir,self.tempname,str(i))
+            success,index,data = d.download(url,i,_min,_max)
+            if success:
                 with self._lock:
+                    self.datas[index]=data
                     self.ready_to_merged.add(i)
             else:
                 # logger.debug(f'{i} download fails! re Q')
@@ -114,8 +116,7 @@ class range_dl(object):
 
         except Exception as e :
             if self.debug:
-                pass
-                # logger.exception(e)
+                logger.exception(e)
 
 
     def target(self):
@@ -124,7 +125,7 @@ class range_dl(object):
                 idx,_min,_max = self.downloadQ.get(timeout=3)
                 self.download(self.url,idx,_min,_max)
             except Exception as e:
-                # logger.exception(e)
+                logger.exception(e)
                 pass
 
     def _make_range(self):
@@ -164,7 +165,7 @@ class range_dl(object):
         while self.next_merged_id < self.range_count:
             dots = random.randint(0,3)*"."
             
-            if   self.out_path:
+            if  self.out_path:
                 pp.update("total merged ", self.next_merged_id, self.range_count,"",userDefineVisual2)
                 pp.update("block pending", self.next_merged_id+len(self.ready_to_merged), self.range_count,"",userDefineVisual2)
             oldidx = self.next_merged_id
@@ -174,22 +175,23 @@ class range_dl(object):
                     logger.debug(f'try merge {self.next_merged_id}  ....')
                     with self._lock:
                         self.ready_to_merged.remove(self.next_merged_id)
-                    p = os.path.join(self.tempdir,self.tempname, str(self.next_merged_id))
+                    # p = os.path.join(self.tempdir,self.tempname, str(self.next_merged_id))
 
-                    infile= open(p, 'rb')
-                    o  = infile.read()
+                    # infile= open(p, 'rb')
+                    # o  = infile.read()
                     
+                    bytes_ref = self.datas[self.next_merged_id] 
                     if  self.out_path:
-                        outfile.write(o)
+                        outfile.write(bytes_ref)
                         outfile.flush()
                     else:
                         try:
-                            sys.stdout.buffer.write(o)
+                            sys.stdout.buffer.write(bytes_ref)
                             sys.stdout.flush()
                         except Exception as e:
                             sys.exit(-1)
 
-                    infile.close()
+                    # infile.close()
 
                     self.next_merged_id += 1
 
@@ -202,7 +204,7 @@ class range_dl(object):
                 logger.exception(e)
                 try:
                     self.next_merged_id=oldidx
-                    os.remove(join(self.tempdir,self.tempname,str(oldidx)))
+                    # os.remove(join(self.tempdir,self.tempname,str(oldidx)))
                     logger.error(f'{oldidx} merge error ,reput to thread')
                     logger.exception(e)
 
