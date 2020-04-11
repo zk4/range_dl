@@ -116,7 +116,8 @@ class range_dl(object):
 
         except Exception as e :
             if self.debug:
-                logger.exception(e)
+                pass
+                # logger.exception(e)
 
 
     def target(self):
@@ -125,7 +126,7 @@ class range_dl(object):
                 idx,_min,_max = self.downloadQ.get(timeout=3)
                 self.download(self.url,idx,_min,_max)
             except Exception as e:
-                logger.exception(e)
+                # logger.exception(e)
                 pass
 
     def _make_range(self):
@@ -172,7 +173,7 @@ class range_dl(object):
             try:
 
                 if self.next_merged_id in self.ready_to_merged:
-                    logger.debug(f'try merge {self.next_merged_id}  ....')
+                    # logger.debug(f'try merge {self.next_merged_id}  ....')
                     with self._lock:
                         self.ready_to_merged.remove(self.next_merged_id)
                     # p = os.path.join(self.tempdir,self.tempname, str(self.next_merged_id))
