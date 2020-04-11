@@ -14,7 +14,7 @@ handlers:
         formatter: standard
 
     colored:
-        class: m3_dl.logx.ColoredHandler
+        class: range_dl.logx.ColoredHandler
 
 root:
     level: INFO
