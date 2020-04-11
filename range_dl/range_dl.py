@@ -74,6 +74,9 @@ class range_dl(object):
         self.tempname       = str(uuid.uuid4())
         self._lock = threading.RLock()
 
+        self._make_range()
+
+
         if self.out_path:
             outdir              = dirname(out_path)
             if outdir and not os.path.isdir(outdir):
@@ -126,11 +129,7 @@ class range_dl(object):
                 # logger.exception(e)
                 pass
 
-    def run(self,threadcount):
-        for a in range(threadcount):
-            threading.Thread(target=self.target).start()
-
-        threading.Thread(target=self.try_merge).start()
+    def _make_range(self):
         _min = 0
         for i in range(self.range_count):
             _max = _min + self.len_sub
@@ -139,8 +138,18 @@ class range_dl(object):
                 _max = self.cotent_size -1 
 
             self.ranges.append((_min,_max))
-            self.downloadQ.put((i,_min,_max))
             _min = _max + 1
+
+    def run(self,threadcount):
+        for a in range(threadcount):
+            threading.Thread(target=self.target).start()
+
+        threading.Thread(target=self.try_merge).start()
+
+        for i,rang in enumerate(self.ranges):
+            _min = rang[0]       
+            _max = rang[1]
+            self.downloadQ.put((i,_min,_max))
 
 
     def try_merge(self):
