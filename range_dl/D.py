@@ -29,6 +29,7 @@ class D():
         self.current_retry_times = 0
         self.verify              = verify
         self.debug               = debug
+        
         super().__init__()
 
     def download(self, url, destFile,_min,_max):
