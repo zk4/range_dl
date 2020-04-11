@@ -62,10 +62,8 @@ class range_dl(object):
 
         self.cotent_size         = self.get_content_size()
         logger.debug(f'self.cotent_size:{self.cotent_size}')
-        self.range_count          = 400 if  self.cotent_size > 10000 else  4    
+        # self.range_count          = 400 if  self.cotent_size > 10000 else  4    
         self.ranges         =[]
-        self.len_sub        = self.cotent_size // self.range_count 
-        self.diff           = self.cotent_size % self.range_count
 
         self.next_merged_id = 0
         self.ready_to_merged= set()
@@ -74,7 +72,7 @@ class range_dl(object):
         self.tempname       = str(uuid.uuid4())
         self._lock = threading.RLock()
 
-        self._make_range()
+        self.range_count = self._make_range()
 
 
         if self.out_path:
@@ -131,14 +129,19 @@ class range_dl(object):
 
     def _make_range(self):
         _min = 0
-        for i in range(self.range_count):
-            _max = _min + self.len_sub
+        range_count = 0
+        while True:
+            _max = _min + 2048* (2*(1+range_count if range_count < 100 else 100))
+            range_count+=1
 
             if _max > self.cotent_size: 
                 _max = self.cotent_size -1 
+                self.ranges.append((_min,_max))
+                break
 
             self.ranges.append((_min,_max))
             _min = _max + 1
+        return range_count
 
     def run(self,threadcount):
         for a in range(threadcount):
