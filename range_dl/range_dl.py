@@ -61,11 +61,11 @@ class range_dl(object):
         self.debug          = debug
 
 
-        self.length         = self.get_content_size()
-        logger.debug(f'self.length:{self.length}')
-        self.limit          = 400        
-        self.len_sub        = self.length // self.limit 
-        self.diff           = self.length % self.limit
+        self.cotent_size         = self.get_content_size()
+        logger.debug(f'self.cotent_size:{self.cotent_size}')
+        self.range_count          = 400 if  self.cotent_size > 10000 else  4    
+        self.len_sub        = self.cotent_size // self.range_count 
+        self.diff           = self.cotent_size % self.range_count
 
         # self.ts_list_pair   = zip(self.ts_list, [n for n in range(len(self.ts_list))])
         self.next_merged_id = 0
@@ -109,16 +109,17 @@ class range_dl(object):
                 with self._lock:
                     self.ready_to_merged.add(i)
             else:
-                logger.debug(f'{i} download fails! re Q')
+                # logger.debug(f'{i} download fails! re Q')
                 self.downloadQ.put((i,_min,_max))
 
         except Exception as e :
             if self.debug:
-                logger.exception(e)
+                pass
+                # logger.exception(e)
 
 
     def target(self):
-        while self.next_merged_id < self.limit:
+        while self.next_merged_id < self.range_count:
             try:
                 idx,_min,_max = self.downloadQ.get(timeout=3)
                 self.download(self.url,idx,_min,_max)
@@ -132,11 +133,11 @@ class range_dl(object):
 
         threading.Thread(target=self.try_merge).start()
         _min = 0
-        for i in range(self.limit):
+        for i in range(self.range_count):
             _max = _min + self.len_sub
 
-            if _max > self.length: 
-                _max = self.length
+            if _max > self.cotent_size: 
+                _max = self.cotent_size -1 
 
             self.downloadQ.put((i,_min,_max))
             _min = _max + 1
@@ -148,11 +149,11 @@ class range_dl(object):
         pp=pb2.getSingleton()
         if self.out_path:
             outfile = open(self.out_path, 'ab')
-        while self.next_merged_id < self.limit:
+        while self.next_merged_id < self.range_count:
             dots = random.randint(0,3)*"."
             
-            pp.update("total merged ", self.next_merged_id, self.limit,"",userDefineVisual2)
-            pp.update("block pending", self.next_merged_id+len(self.ready_to_merged), self.limit,"",userDefineVisual2)
+            pp.update("total merged ", self.next_merged_id, self.range_count,"",userDefineVisual2)
+            pp.update("block pending", self.next_merged_id+len(self.ready_to_merged), self.range_count,"",userDefineVisual2)
             oldidx = self.next_merged_id
             try:
 
@@ -191,7 +192,7 @@ class range_dl(object):
 
                     _min = self.len_sub * oldidx       
                     _max = self.len_sub * (oldidx + 1)
-                    if oldidx == self.limit-1: 
+                    if oldidx == self.range_count-1: 
                         _max += self.diff
                     self.downloadQ.put((oldidx,_min,_max))
                 except Exception as e2:

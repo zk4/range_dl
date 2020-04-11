@@ -18,7 +18,8 @@ class pb2:
     __currentIconIdx = 0
     __istty=sys.stdout.isatty()
     if not __istty:
-        logger.warning("WARNNING:pb2 not in tty! only support one line. multi line not supported")
+        # logger.warning("WARNNING:pb2 not in tty! only support one line. multi line not supported")
+        pass
 
     def up(self):
         if self.__istty:
