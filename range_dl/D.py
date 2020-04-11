@@ -55,6 +55,7 @@ class D():
                 self.headers['cookie']=self.cookie
 
             self.headers['Range']='bytes=%d-%d' % (_min,_max)
+            # print("------------------------",destFile,_min,_max,self.headers)
 
             resp = requests.request("GET", url,timeout=10, headers=self.headers, stream=True, proxies=self.proxies, allow_redirects=True,verify=self.verify)
             # if 300>resp.status_code >= 200:
@@ -72,10 +73,12 @@ class D():
                             wrote = wrote + len(data)
                             f.write(data)
                             p.update(name.rjust(13,' '), wrote, webSize,str(int(wrote/(int(time.time()-start)+1)/1024)) +"kb/s",userDefineVisual)
-                    if wrote != webSize:
+                    # print("data-------->",_min,_max,data.decode("utf-8"))
+                    if wrote != webSize :
                         # logger.debug(f"ERROR, something went wrong wroteSize{wrote} != webSize{webSize}")
                         # print("size erorrrrrrrrrrrrrrrrrrrrrrrr",wrote,webSize)
                         return False
+
 
                 os.rename(destFile+".tmp",destFile)
                 return True
@@ -92,7 +95,7 @@ class D():
         if self.cookie:
             self.headers['cookie']=self.cookie
 
-        rr = requests.get(url, headers=self.headers, stream=True, proxies=self.proxies, verify=self.verify)
+        rr = requests.head(url, headers=self.headers, stream=True, proxies=self.proxies, verify=self.verify)
         file_size = int(rr.headers['Content-Length'])
 
         if 300>rr.status_code>=200:

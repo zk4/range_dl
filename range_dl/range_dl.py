@@ -63,7 +63,7 @@ class range_dl(object):
 
         self.length         = self.get_content_size()
         logger.debug(f'self.length:{self.length}')
-        self.limit          = 300        
+        self.limit          = 400        
         self.len_sub        = self.length // self.limit 
         self.diff           = self.length % self.limit
 
@@ -73,6 +73,7 @@ class range_dl(object):
         self.downloadQ      = queue.PriorityQueue()
         self.tempdir        = tempfile.gettempdir()
         self.tempname       = str(uuid.uuid4())
+        self._lock = threading.RLock()
 
         if self.out_path:
             outdir              = dirname(out_path)
@@ -82,7 +83,7 @@ class range_dl(object):
                             os.remove(self.out_path)
     
     def get_content_size(self):
-        d = D(proxies=self.proxies,headers=headers,verify=self.verify,debug=self.debug)
+        d = D(proxies=self.proxies,headers=dict(headers),verify=self.verify,debug=self.debug)
         size  = d.getWebFileSize(self.url)
         return size 
         
@@ -100,12 +101,13 @@ class range_dl(object):
 
     def download(self,url,i,_min,_max):
         try:
-            d = D(proxies=self.proxies,headers=headers,verify=self.verify,debug=self.debug)
-            logger.debug(f'url:{url}')
+            d = D(proxies=self.proxies,headers=dict(headers),verify=self.verify,debug=self.debug)
+            # logger.debug(f'url:{url}')
             pathname = join(self.tempdir,self.tempname,str(i))
             ret = d.download(url,pathname,_min,_max)
             if ret:
-                self.ready_to_merged.add(i)
+                with self._lock:
+                    self.ready_to_merged.add(i)
             else:
                 logger.debug(f'{i} download fails! re Q')
                 self.downloadQ.put((i,_min,_max))
@@ -118,83 +120,85 @@ class range_dl(object):
     def target(self):
         while self.next_merged_id < self.limit:
             try:
-                idx,_min,_max = self.downloadQ.get(timeout=30)
+                idx,_min,_max = self.downloadQ.get(timeout=3)
                 self.download(self.url,idx,_min,_max)
             except Exception as e:
-                logger.exception(e)
+                # logger.exception(e)
                 pass
 
     def run(self,threadcount):
-        for _ in range(threadcount):
+        for a in range(threadcount):
             threading.Thread(target=self.target).start()
 
         threading.Thread(target=self.try_merge).start()
-        
+        _min = 0
         for i in range(self.limit):
-            _min = self.len_sub * i       
-            _max = self.len_sub * (i + 1)
+            _max = _min + self.len_sub
 
-            if i == self.limit-1: 
-                _max += self.diff
+            if _max > self.length: 
+                _max = self.length
 
             self.downloadQ.put((i,_min,_max))
+            _min = _max + 1
 
 
     def try_merge(self):
-            outfile  = None
+        outfile  = None
 
-            pp=pb2.getSingleton()
-            if self.out_path:
-                outfile = open(self.out_path, 'ab')
-            while self.next_merged_id < self.limit:
-                dots = random.randint(0,3)*"."
-                
-                pp.update("total merged ", self.next_merged_id, self.limit,"",userDefineVisual2)
-                pp.update("block pending", self.next_merged_id+len(self.ready_to_merged), self.limit,"",userDefineVisual2)
-                oldidx = self.next_merged_id
-                try:
-                    if self.next_merged_id in self.ready_to_merged:
-                        logger.debug(f'try merge {self.next_merged_id}  ....')
+        pp=pb2.getSingleton()
+        if self.out_path:
+            outfile = open(self.out_path, 'ab')
+        while self.next_merged_id < self.limit:
+            dots = random.randint(0,3)*"."
+            
+            pp.update("total merged ", self.next_merged_id, self.limit,"",userDefineVisual2)
+            pp.update("block pending", self.next_merged_id+len(self.ready_to_merged), self.limit,"",userDefineVisual2)
+            oldidx = self.next_merged_id
+            try:
+
+                if self.next_merged_id in self.ready_to_merged:
+                    logger.debug(f'try merge {self.next_merged_id}  ....')
+                    with self._lock:
                         self.ready_to_merged.remove(self.next_merged_id)
-                        p = os.path.join(self.tempdir,self.tempname, str(self.next_merged_id))
+                    p = os.path.join(self.tempdir,self.tempname, str(self.next_merged_id))
 
-                        infile= open(p, 'rb')
-                        o  = infile.read()
-                        
-                        if  self.out_path:
-                            outfile.write(o)
-                            outfile.flush()
-                        else:
-                            sys.stdout.buffer.write(o)
-                            sys.stdout.flush()
-
-                        infile.close()
-
-                        self.next_merged_id += 1
-
-                        os.remove(join(self.tempdir,self.tempname,str(oldidx)))
+                    infile= open(p, 'rb')
+                    o  = infile.read()
+                    
+                    if  self.out_path:
+                        outfile.write(o)
+                        outfile.flush()
                     else:
-                        time.sleep(1)
-                        logger.debug(f'waiting for {self.next_merged_id} to merge ')
-                        logger.debug(f'unmerged {self.ready_to_merged} active_thread:{threading.active_count()}')
-                except Exception as e :
+                        sys.stdout.buffer.write(o)
+                        sys.stdout.flush()
+
+                    infile.close()
+
+                    self.next_merged_id += 1
+
+                    # os.remove(join(self.tempdir,self.tempname,str(oldidx)))
+                else:
+                    time.sleep(1)
+                    logger.debug(f'waiting for {self.next_merged_id} to merge ')
+                    logger.debug(f'unmerged {self.ready_to_merged} active_thread:{threading.active_count()}')
+            except Exception as e :
+                logger.exception(e)
+                try:
+                    self.next_merged_id=oldidx
+                    os.remove(join(self.tempdir,self.tempname,str(oldidx)))
+                    logger.error(f'{oldidx} merge error ,reput to thread')
                     logger.exception(e)
-                    try:
-                        self.next_merged_id=oldidx
-                        os.remove(join(self.tempdir,self.tempname,str(oldidx)))
-                        logger.error(f'{oldidx} merge error ,reput to thread')
-                        logger.exception(e)
 
-                        _min = self.len_sub * oldidx       
-                        _max = self.len_sub * (oldidx + 1)
-                        if oldidx == self.limit-1: 
-                            _max += self.diff
-                        self.downloadQ.put((oldidx,_min,_max))
-                    except Exception as e2:
-                        logger.exception(e)
+                    _min = self.len_sub * oldidx       
+                    _max = self.len_sub * (oldidx + 1)
+                    if oldidx == self.limit-1: 
+                        _max += self.diff
+                    self.downloadQ.put((oldidx,_min,_max))
+                except Exception as e2:
+                    logger.exception(e)
 
-            if self.out_path:
-                outfile.close()
+        if self.out_path:
+            outfile.close()
             
 
 def main(args):
@@ -230,7 +234,7 @@ def createParse():
     parser.add_argument("url",  help="url")
     parser.add_argument('-o', '--out_path',type=str,  help="output path, ex: ./a.mp4" )
     parser.add_argument('-p', '--proxy',type=str,  help="for example: socks5h://127.0.0.1:5992")
-    parser.add_argument('-t', '--threadcount',type=int,  help="thread count" ,default=2)
+    parser.add_argument('-t', '--threadcount',type=int,  help="thread count" ,default=20)
     parser.add_argument('-d', '--debug', help='debug info', default=False, action='store_true') 
     parser.add_argument('-w', '--overwrite', help='overwrite existed file', action='store_true')  
     mydir = os.path.dirname(os.path.abspath(__file__))
