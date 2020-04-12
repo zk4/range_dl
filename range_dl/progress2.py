@@ -45,7 +45,7 @@ class pb2:
         self.___demon()
 
     def ___demon(self):
-        t = Thread(target=self.paint)
+        t = Thread(target=self.paint,daemon=True)
         t.daemon = True
         t.start()
 

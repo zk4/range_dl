@@ -149,14 +149,16 @@ class range_dl(object):
 
     def run(self,threadcount):
         for a in range(threadcount):
-            threading.Thread(target=self.target).start()
+            threading.Thread(target=self.target,daemon=True).start()
 
-        threading.Thread(target=self.try_merge).start()
 
         for i,rang in enumerate(self.ranges):
             _min = rang[0]       
             _max = rang[1]
             self.downloadQ.put((i,_min,_max))
+
+        # threading.Thread(target=self.try_merge).start()
+        self.try_merge()
 
 
     def try_merge(self):
@@ -192,7 +194,8 @@ class range_dl(object):
                             sys.stdout.buffer.write(bytes_ref)
                             sys.stdout.flush()
                         except Exception as e:
-                            sys.exit(-1)
+                            # pipe broken for most cases
+                            return 
 
                     # infile.close()
 
