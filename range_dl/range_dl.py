@@ -13,6 +13,7 @@ import requests
 import subprocess
 import threading
 import tempfile
+import json
 import uuid
 import time
 from Crypto.Cipher import AES
@@ -49,7 +50,7 @@ def userDefineVisual2(tag, nowValue, fullValue,extrainfo):
 
 class range_dl(object):
 
-    def __init__(self,url,out_path,proxy,not_verify_ssl,debug):
+    def __init__(self,url,out_path,proxy,not_verify_ssl,debug,headers):
         pool_size           = 10
         self.proxies        = {"https":proxy,"http":proxy}
         self.verify         = not not_verify_ssl
@@ -58,6 +59,7 @@ class range_dl(object):
         self.out_path       = out_path
         self.session        = self._get_http_session(pool_size, pool_size, 5)
         self.debug          = debug
+        self.headers          = headers
 
 
         self.cotent_size         = self.get_content_size()
@@ -84,7 +86,7 @@ class range_dl(object):
                             os.remove(self.out_path)
     
     def get_content_size(self):
-        d = D(proxies=self.proxies,headers=dict(headers),verify=self.verify,debug=self.debug)
+        d = D(proxies=self.proxies,headers={**dict(headers),**(json.loads(self.headers))},verify=self.verify,debug=self.debug)
         size  = d.getWebFileSize(self.url)
         return size 
         
@@ -102,7 +104,7 @@ class range_dl(object):
 
     def download(self,url,i,_min,_max):
         try:
-            d = D(proxies=self.proxies,headers=dict(headers),verify=self.verify,debug=self.debug)
+            d = D(proxies=self.proxies,headers={**dict(headers),**(json.loads(self.headers))},verify=self.verify,debug=self.debug)
             # logger.debug(f'url:{url}')
             # pathname = join(self.tempdir,self.tempname,str(i))
             success,index,data = d.download(url,i,_min,_max)
@@ -235,7 +237,8 @@ def main(args):
             args.out_path,
             args.proxy,
             args.ignore_certificate_verfication,
-            args.debug
+            args.debug,
+            args.headers
             )
 
     # must ensure 1 for merged thread
@@ -253,6 +256,7 @@ def createParse():
     parser.add_argument("url",  help="url")
     parser.add_argument('-o', '--out_path',type=str,  help="output path, ex: ./a.mp4" )
     parser.add_argument('-p', '--proxy',type=str,  help="for example: socks5h://127.0.0.1:5992")
+    parser.add_argument('-H', '--headers',type=str,  help="""headers width dict string '{"Host": "qdall01.baidupcs.com"}'""" )
     parser.add_argument('-t', '--threadcount',type=int,  help="thread count" ,default=10)
     parser.add_argument('-d', '--debug', help='debug info', default=False, action='store_true') 
     parser.add_argument('-w', '--overwrite', help='overwrite existed file', action='store_true')  
