@@ -50,7 +50,8 @@ def userDefineVisual2(tag, nowValue, fullValue,extrainfo):
 
 class range_dl(object):
 
-    def __init__(self,url,out_path,proxy,not_verify_ssl,debug,headers):
+    def __init__(self,url,out_path,proxy,not_verify_ssl,debug,headers="{}"):
+        
         pool_size           = 10
         self.proxies        = {"https":proxy,"http":proxy}
         self.verify         = not not_verify_ssl
@@ -225,6 +226,37 @@ class range_dl(object):
             outfile.close()
             
 
+import re
+
+def parseCurl(curl_str):
+    all_args= re.findall("-.*?['\"].*?['\"]",curl_str)
+    for a in all_args:
+        pair=a.strip()
+        v=pair[3:].strip()
+
+        if "range" in v[0] or "Range" in v[0]:
+            continue
+
+        if v[0]=="'" or v[0]=='"':
+            yield  pair[1],v[1:-1]
+        else:
+            yield  pair[1],v
+
+    url= re.findall("(?=' +')'(.*')",curl_str)
+    if len(url)==1:
+        url=url[0].strip()
+        if url[0]=="'" or url[0]=='"':
+            yield "url",url[1:-1]
+        else:
+            yield "url",url
+    else:
+        raise Exception("no url")
+
+
+
+
+
+
 def main(args):
     if args.debug:
         logger.setLevel("DEBUG")
@@ -234,6 +266,18 @@ def main(args):
     if args.out_path and os.path.exists(args.out_path) and not args.overwrite:
             logger.error(f'{args.out_path} exists! use -w if you want to overwrite it ')
             sys.exit(-1) 
+
+    if args.curl:
+        headers = {}
+        for t,v in parseCurl(args.url):
+            if t =="H":
+                header_pair =  v.split(":",1)
+                headers[header_pair[0]]=header_pair[1].strip()
+                
+            if t =="url":
+                args.url = v
+        args.headers=json.dumps(headers)
+    # print(args.headers,args.url)
 
     m = range_dl(
             args.url,
@@ -259,6 +303,7 @@ def createParse():
     parser.add_argument("url",  help="url")
     parser.add_argument('-o', '--out_path',type=str,  help="output path, ex: ./a.mp4" )
     parser.add_argument('-p', '--proxy',type=str,  help="for example: socks5h://127.0.0.1:5992")
+    parser.add_argument('-c', '--curl', help='curl', action='store_true')  
     parser.add_argument('-H', '--headers',type=str,  help="""headers width dict string '{"Host": "qdall01.baidupcs.com"}'""" )
     parser.add_argument('-t', '--threadcount',type=int,  help="thread count" ,default=10)
     parser.add_argument('-d', '--debug', help='debug info', default=False, action='store_true') 
