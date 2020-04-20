@@ -36,7 +36,7 @@ logger = logging.getLogger(__name__)
 
 # proxies={"https":"socks5h://127.0.0.1:5992","http":"socks5h://127.0.0.1:5992"}
 headers = {
-    'user-agent': 'netdisk;2.2.3;pc;pc-mac;10.14.6;macbaiduyunguanjia' ,
+    # 'user-agent': 'netdisk;2.2.3;pc;pc-mac;10.14.6;macbaiduyunguanjia' ,
 }
 
 def userDefineVisual2(tag, nowValue, fullValue,extrainfo):
@@ -307,7 +307,7 @@ def createParse():
     parser.add_argument('-o', '--out_path',type=str,  help="output path, ex: ./a.mp4" )
     parser.add_argument('-p', '--proxy',type=str,  help="for example: socks5h://127.0.0.1:5992")
     parser.add_argument('-c', '--curl', help='enalbe curl command in url! parse only header and url', action='store_true')  
-    parser.add_argument('-H', '--headers',type=str,  help="""headers width dict string '{"Host": "qdall01.baidupcs.com"}'""" )
+    parser.add_argument('-H', '--headers',type=str,  help="""headers width dict string '{"Host": "qdall01.baidupcs.com"}'""" ,default="{}")
     parser.add_argument('-t', '--threadcount',type=int,  help="thread count" ,default=10)
     parser.add_argument('-d', '--debug', help='debug info', default=False, action='store_true') 
     parser.add_argument('-w', '--overwrite', help='overwrite existed file', action='store_true')  
